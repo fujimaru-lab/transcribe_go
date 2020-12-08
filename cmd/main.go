@@ -6,28 +6,37 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/fujimaru-lab/transcribe_go/internal/constraint"
+	"github.com/fujimaru-lab/transcribe_go/internal/constant"
+	"github.com/fujimaru-lab/transcribe_go/internal/targetfile"
 )
 
 func main() {
 	// sessionの作成
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(constraint.Region),
+		Region: aws.String(constant.Region),
 	})
 	if err != nil {
 		log.Fatal("failed to get session:", err)
-		return
 	}
 
 	// S3バケット作成
 	s3Svc := s3.New(sess)
-	bucket, err := createBucket(s3Svc)
+	crtBktInput := &s3.CreateBucketInput{
+		Bucket: aws.String(constant.BucketName),
+		CreateBucketConfiguration: &s3.CreateBucketConfiguration{
+			LocationConstraint: aws.String(constant.Region),
+		},
+	}
+	crtBktOutput, err := s3Svc.CreateBucket(crtBktInput)
 	if err != nil {
 		log.Fatal("failed to create bucket:", err)
-		return
 	}
 
 	// 未アップロードの音声ファイルをリストアップ
+	filepaths, err := targetfile.ListTargetFilePath()
+	if err != nil {
+		log.Fatal("failed to list Transcribed file:", err)
+	}
 
 	// 音声ファイルアップロード
 
@@ -39,15 +48,4 @@ func main() {
 
 	// 処理済みファイル更新
 
-}
-
-func createBucket(s3Svc *s3.S3) (*s3.CreateBucketOutput, error) {
-	input := &s3.CreateBucketInput{
-		Bucket: aws.String(constraint.BucketName),
-		CreateBucketConfiguration: &s3.CreateBucketConfiguration{
-			LocationConstraint: aws.String(constraint.Region),
-		},
-	}
-	output, err := s3Svc.CreateBucket(input)
-	return output, err
 }
