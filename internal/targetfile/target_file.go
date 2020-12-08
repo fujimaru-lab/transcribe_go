@@ -10,9 +10,9 @@ import (
 )
 
 type history struct {
-	Filepath    string `json:'filepath'`
-	ProcessedAt string `json:'processed_at'`
-	IsSuccess   bool   `json:'status'`
+	Filepath    string `json:"filepath"`
+	ProcessedAt string `json:"processed_at"`
+	IsSuccess   bool   `json:"status"`
 }
 
 // ListTargetFilePath resourceディレクトリに保存されているファイルのうち
@@ -63,7 +63,7 @@ func listTranscribedFilePath() (filePaths []string, err error) {
 		return nil, err
 	}
 	var history []history
-	err = json.Unmarshal(data, history)
+	err = json.Unmarshal(data, &history)
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +72,6 @@ func listTranscribedFilePath() (filePaths []string, err error) {
 			filePaths = append(filePaths, h.Filepath)
 		}
 	}
-	sort.Sort(filePaths)
+	sort.StringSlice(filePaths).Sort()
 	return
 }
