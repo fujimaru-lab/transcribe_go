@@ -1,0 +1,2 @@
+# transcribe_go
+AWS Transcribeを利用して音声データを文字起こしする
