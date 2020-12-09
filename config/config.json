@@ -1,0 +1,7 @@
+{
+    "resource":{
+        "input_dir_path": "C:/Users/yoshi/go/src/github.com/fujimaru-lab/transcribe_go/resource/input/",
+        "output_dir_path": "C:/Users/yoshi/go/src/github.com/fujimaru-lab/transcribe_go/resource/output/"
+    },
+    "history_filepath": "C:/Users/yoshi/go/src/github.com/fujimaru-lab/transcribe_go/resource/history/history.json"
+}

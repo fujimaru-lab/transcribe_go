@@ -33,7 +33,15 @@ func main() {
 	}
 
 	// 未アップロードの音声ファイルをリストアップ
-	filepaths, err := targetfile.ListTargetFilePath()
+	all, err := targetfile.ListAllTargetFilePath()
+	if err != nil {
+		log.Fatal("failed to list files in input directory")
+	}
+	transcribed, err := targetfile.ListTranscribedFilePath()
+	if err != nil {
+		log.Fatal("failed to get transcribed file history")
+	}
+	filepaths, err := targetfile.ListTargetFilePath(all, transcribed)
 	if err != nil {
 		log.Fatal("failed to list Transcribed file:", err)
 	}
