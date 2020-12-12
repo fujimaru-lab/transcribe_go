@@ -1,3 +1,4 @@
 .vscode
 sandbox
-resource/input/testfile*
+cmd/transcribe.exe
+resource/input/*
