@@ -109,7 +109,7 @@ func main() {
 					log.Printf("failed to download Key:%s, err:%+v\n", key, err)
 					log.Printf("CHECK OUT S3: %s\n", *job.TranscriptionJob.Transcript.TranscriptFileUri)
 				} else {
-					log.Printf("succeed at download file:%s\n", filename)
+					log.Printf("succeed at download file:%s\n", filepath.Base(outputPath))
 				}
 				isNotFin = false
 			}
