@@ -4,7 +4,7 @@ AWS Transcribeを利用して音声データを文字起こしする
 
 ## credentials
 
-ホームディレクトリ配下に./aws/credentialsファイルを配置する
+ホームディレクトリ配下に.aws/credentialsファイルを配置する
 
 ``` txt
 [default]
