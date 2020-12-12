@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -25,7 +24,7 @@ func main() {
 		log.Fatal("failed to get session:", err)
 	}
 
-	s3Svc := s3.New(sess)
+	// s3Svc := s3.New(sess)
 	// 未アップロードの音声ファイルをリストアップ
 	var inptFilePaths []string
 	err = filepath.Walk(filepath.Join(constant.RootDir, constant.InputDir),
@@ -54,6 +53,7 @@ func main() {
 	trscrbSvc := transcribeservice.New(sess)
 	for _, path := range inptFilePaths {
 		filename := filepath.Base(path)
+		log.Printf("start to upload file: %s", filename)
 		f, _ := os.Open(path)
 		defer f.Close()
 		upldInput := &s3manager.UploadInput{
@@ -67,15 +67,16 @@ func main() {
 		}
 
 		// Transcribe job実行
+		now := time.Now()
+		datetimeSuffix := fmt.Sprintf("%d%d_%d%d%d", now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second())
 		strtTscrptJobInpt := transcribeservice.StartTranscriptionJobInput{
-			IdentifyLanguage:     aws.Bool(true),
 			LanguageCode:         aws.String(transcribeservice.LanguageCodeJaJp),
-			LanguageOptions:      []*string{aws.String(transcribeservice.LanguageCodeEnUs)},
 			Media:                &transcribeservice.Media{MediaFileUri: &upldOutput.Location},
 			OutputBucketName:     aws.String(constant.BucketName),
-			OutputKey:            aws.String("output/" + filename),
-			TranscriptionJobName: aws.String(constant.TrnscrptJobName),
+			OutputKey:            aws.String("output/" + filename + ".json"),
+			TranscriptionJobName: aws.String(fmt.Sprintf("%s%s", constant.TrnscrptJobName, datetimeSuffix)),
 		}
+		log.Printf("start to transcribe. param: %v\n", strtTscrptJobInpt)
 		strtTscrptJobOtpt, err := trscrbSvc.StartTranscriptionJob(&strtTscrptJobInpt)
 		if err != nil {
 			log.Fatal("failed to start transcript job:", err)
@@ -84,47 +85,45 @@ func main() {
 			TranscriptionJobName: aws.String(*strtTscrptJobOtpt.TranscriptionJob.TranscriptionJobName),
 		}
 		// job実行結果取得
-		for true {
+		isNotFin := true
+		for isNotFin {
 			job, _ := trscrbSvc.GetTranscriptionJob(&getTscrptJobInpt)
-			jobStatus := fmt.Sprint(job.TranscriptionJob.TranscriptionJobStatus)
+			jobStatus := *job.TranscriptionJob.TranscriptionJobStatus
 
 			if transcribeservice.TranscriptionJobStatusCompleted == jobStatus {
+				log.Printf("job is %s", jobStatus)
 				// job実行結果書き出し
-				outputPath := filepath.Join(constant.RootDir, constant.OutputDir, filename)
-				f, _ := os.Create(outputPath)
+				tmp := filepath.Join(constant.RootDir, constant.OutputDir, filename)
+				outputPath := tmp + ".json"
+				f, err := os.Create(outputPath)
+				if err != nil {
+					log.Printf("failed to create download file")
+				}
 				defer f.Close()
-				_, err := downloader.Download(f, &s3.GetObjectInput{
+				key := "output/" + filename + ".json"
+				_, err = downloader.Download(f, &s3.GetObjectInput{
 					Bucket: aws.String(constant.BucketName),
-					Key:    aws.String("output/" + filename),
+					Key:    aws.String(key),
 				})
-				log.Printf("failed to download file:%s, err:%+v\n", filename, err)
-				break
+				if err != nil {
+					log.Printf("failed to download Key:%s, err:%+v\n", key, err)
+					log.Printf("CHECK OUT S3: %s\n", *job.TranscriptionJob.Transcript.TranscriptFileUri)
+				} else {
+					log.Printf("succeed at download file:%s\n", filename)
+				}
+				isNotFin = false
 			}
 			if transcribeservice.TranscriptionJobStatusInProgress == jobStatus {
-				log.Println("in progress...")
-				continue
+				log.Printf("job is %s......", jobStatus)
+				isNotFin = true
 			}
 			if transcribeservice.TranscriptionJobStatusFailed == jobStatus {
-				log.Println("failed to transcribe. file:", filename)
-				break
+				log.Printf("job is %s. file:%s", jobStatus, filename)
+				isNotFin = false
 			}
-
 			// ちょっとインターバル
-			time.Sleep(10 * time.Second)
+			time.Sleep(5 * time.Second)
 		}
-		// オブジェクトの削除
-		_, err = s3Svc.DeleteObject(&s3.DeleteObjectInput{
-			Bucket: aws.String(constant.BucketName),
-			Key:    aws.String("input/" + filename),
-		})
-		_, err = s3Svc.DeleteObject(&s3.DeleteObjectInput{
-			Bucket: aws.String(constant.BucketName),
-			Key:    aws.String("output/" + filename),
-		})
-		// 処理済みファイルを移動
-		bkfile, _ := os.Create(filepath.Join(constant.RootDir, constant.BkDir, filename))
-		defer bkfile.Close()
-		bkdata, _ := ioutil.ReadFile(path)
-		bkfile.Write(bkdata)
+
 	}
 }
